@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnergyTrading | Marketplace</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">EnergyTrading</div>
+        <div class="nav-right">
+            <div class="balance-card">
+                <span class="label">Balance</span>
+                <span id="userBalance" class="value">0.00</span>
+                <span class="currency">INR</span>
+                <button class="add-funds-btn" onclick="showAddFunds()">+</button>
+            </div>
+            <div class="user-info" id="userInfo">Not Logged In</div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Add Funds Modal -->
+    <div id="fundsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass">
+            <h3>Add Funds (Demo)</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Enter the amount of INR you want to add to your account.</p>
+            <div class="input-group">
+                <label>Amount (INR)</label>
+                <input type="number" id="fundsAmount" placeholder="1000.00" step="100">
+            </div>
+            <div class="modal-actions">
+                <button class="side-btn" onclick="hideAddFunds()">Cancel</button>
+                <button class="login-btn" onclick="addFunds()" style="margin-top: 0; width: auto; padding: 10px 30px;">Add Money</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Order Book Section -->
+        <div class="section-card glass">
+            <h3>Order Book <span style="font-size: 0.8rem; color: var(--text-muted); float: right;">kWh / INR</span></h3>
+            <div id="orderBook">
+                <table class="book-table">
+                    <thead>
+                        <tr>
+                            <th>Price (INR)</th>
+                            <th style="text-align: right;">Amount (kWh)</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="askList"></tbody>
+                    <tbody>
+                        <tr><td colspan="3" style="text-align: center; padding: 15px; font-weight: bold; font-size: 1.2rem;" id="marketPrice">0.00</td></tr>
+                    </tbody>
+                    <tbody id="bidList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Trade Interface Section -->
+        <div class="section-card glass">
+            <h3>Place Order</h3>
+            <div class="side-toggle">
+                <button id="buyBtn" class="side-btn active buy" onclick="setSide('BID')">BUY Energy</button>
+                <button id="sellBtn" class="side-btn sell" onclick="setSide('ASK')">SELL Energy</button>
+            </div>
+            
+            <div class="order-form">
+                <div class="input-group">
+                    <label>Price (INR)</label>
+                    <input type="number" id="orderPrice" step="0.01" placeholder="0.00">
+                </div>
+                <div class="input-group">
+                    <label>Amount (kWh)</label>
+                    <input type="number" id="orderQty" step="0.01" placeholder="0.00">
+                </div>
+                <div style="margin: 20px 0; font-size: 0.9rem; color: var(--text-muted);">
+                    Total: <span id="totalCost" style="color: white; font-weight: bold;">0.00</span> INR
+                </div>
+                <button class="login-btn" id="placeOrderBtn" onclick="placeOrder()">Execute Order</button>
+            </div>
+        </div>
+
+        <!-- Recent Trades Section -->
+        <div class="section-card glass">
+            <h3>Recent Trades</h3>
+            <div id="tradeList" style="overflow-y: auto; max-height: calc(100% - 60px);">
+                <!-- Trades will be appended here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="alert"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

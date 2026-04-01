@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnergyTrading | Login</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card glass">
+            <h2 id="formTitle">EnergyTrading</h2>
+            <p id="formSubtitle" style="color: var(--text-muted); margin-bottom: 30px;">Login to start trading kWh</p>
+            
+            <form id="authForm">
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="e.g. trader1" required>
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" id="submitBtn" class="login-btn">Sign In</button>
+            </form>
+            
+            <p style="margin-top: 20px; font-size: 0.9rem; color: var(--text-muted);">
+                <span id="toggleText">Don't have an account?</span> 
+                <a href="#" id="toggleAuth" style="color: var(--primary); text-decoration: none; font-weight: bold;">Sign Up</a>
+            </p>
+
+            <div id="error" style="color: #ff4d4d; margin-top: 15px; font-size: 0.85rem; display: none; background: rgba(255, 77, 77, 0.1); padding: 10px; border-radius: 6px; border: 1px solid rgba(255, 77, 77, 0.2);"></div>
+            <div id="success" style="color: var(--primary); margin-top: 15px; font-size: 0.85rem; display: none; background: rgba(0, 255, 136, 0.1); padding: 10px; border-radius: 6px; border: 1px solid rgba(0, 255, 136, 0.2);"></div>
+        </div>
+    </div>
+
+    <script>
+        let isLogin = true;
+        const toggleAuth = document.getElementById('toggleAuth');
+        const formTitle = document.getElementById('formTitle');
+        const formSubtitle = document.getElementById('formSubtitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const toggleText = document.getElementById('toggleText');
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+
+        toggleAuth.onclick = (e) => {
+            e.preventDefault();
+            isLogin = !isLogin;
+            formTitle.innerText = isLogin ? 'EnergyTrading' : 'Join the Grid';
+            formSubtitle.innerText = isLogin ? 'Login to start trading kWh' : 'Create an account to start trading';
+            submitBtn.innerText = isLogin ? 'Sign In' : 'Create Account';
+            toggleText.innerText = isLogin ? "Don't have an account?" : "Already have an account?";
+            toggleAuth.innerText = isLogin ? 'Sign Up' : 'Log In';
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+        };
+
+        document.getElementById('authForm').onsubmit = async (e) => {
+            e.preventDefault();
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const endpoint = isLogin ? '/login' : '/signup';
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    if (isLogin) {
+                        localStorage.setItem('user', JSON.stringify(data));
+                        window.location.href = '/static/index.html';
+                    } else {
+                        successDiv.innerText = 'Account created! Please log in.';
+                        successDiv.style.display = 'block';
+                        // Switch to login view after success
+                        setTimeout(() => toggleAuth.click(), 1500);
+                    }
+                } else {
+                    errorDiv.innerText = data.detail || 'Authentication failed';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errorDiv.innerText = 'Connection error. Is the server running?';
+                errorDiv.style.display = 'block';
+            }
+        };
+    </script>
+</body>
+</html>
