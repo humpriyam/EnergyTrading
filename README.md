@@ -1,3 +1,5 @@
+AI ANALYSED THE CODE AND HELPED ME WRITE THIS; I TOOK HELP FROM AI FOR THE CODES TOO
+
 # ⚡ EnergyTrading - Real-Time Peer-to-Peer Energy Marketplace
 
 Welcome to **EnergyTrading**, a high-performance, full-stack simulation of a decentralized energy grid. This platform allows users to buy and sell energy (kWh) in a live marketplace, featuring real-time trade matching and automated financial settlement.
