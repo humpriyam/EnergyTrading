@@ -88,10 +88,13 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
     active_connections[username].append(websocket)
     
     try:
-        # Send initial state
+        # Send initial state with user-specific orders
         book = engine_trading.orderbooks.get("kWh_INR")
         if book:
-            await websocket.send_text(json.dumps({"type": "SNAPSHOT", "data": book.get_snapshot()}))
+            await websocket.send_text(json.dumps({
+                "type": "SNAPSHOT", 
+                "data": book.get_snapshot(username)
+            }))
         
         while True:
             data = await websocket.receive_text()
@@ -103,6 +106,8 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 side = payload["side"]
                 price = floor_to_two(payload["price"])
                 quantity = floor_to_two(payload["quantity"])
+                source = payload.get("source", "Grid")
+                delivery_slot = payload.get("delivery_slot", "Next Hour")
                 
                 # Create a DB session for validation and settlement
                 db = SessionLocal()
@@ -128,10 +133,12 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                         payload["symbol"],
                         side,
                         price,
-                        quantity
+                        quantity,
+                        source,
+                        delivery_slot
                     )
                     
-                    # Settle trades in the database
+                    # Settle trades in the database and record for history
                     for trade in trades:
                         buyer_id = trade["buyer_id"]
                         seller_id = trade["seller_id"]
@@ -144,6 +151,17 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                             buyer.balance -= trade_val
                         if seller:
                             seller.balance += trade_val
+
+                        # PERSIST TRADE FOR CHARTING
+                        new_trade_record = models.TradeRecord(
+                            symbol=trade["symbol"],
+                            price=float(trade["price"]),
+                            quantity=float(trade["quantity"]),
+                            buyer_id=buyer_id,
+                            seller_id=seller_id,
+                            timestamp=float(trade["timestamp"])
+                        )
+                        db.add(new_trade_record)
                         
                     db.commit()
                     
@@ -160,18 +178,52 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                                 "type": "BALANCE_UPDATE",
                                 "balance": db_u.balance
                             }, target_user=u)
+                        
+                        # SEND PERSONALIZED SNAPSHOT TO UPDATED USERS
+                        user_snapshot = engine_trading.orderbooks["kWh_INR"].get_snapshot(u)
+                        await broadcast_update({
+                            "type": "SNAPSHOT",
+                            "data": user_snapshot
+                        }, target_user=u)
 
-                    # Broadcast trades and snapshot update to everyone
+                    # Update all other users with public snapshot
                     await broadcast_update({
                         "type": "TRADES",
                         "data": trades
                     })
+
+                    # Broadcast the public snapshot to everyone who wasn't involved in the trade
+                    # (Actually, broadcasting to everyone is fine, participants will just get a redundant update)
+                    public_snapshot = engine_trading.orderbooks["kWh_INR"].get_snapshot()
                     await broadcast_update({
                         "type": "SNAPSHOT",
-                        "data": snapshot
+                        "data": public_snapshot
                     })
+
                 finally:
                     db.close()
+
+            elif msg["type"] == "CANCEL_ORDER":
+                payload = msg["payload"]
+                user_id = payload["user_id"]
+                symbol = payload["symbol"]
+                order_id = payload["order_id"]
+
+                snapshot = engine_trading.cancel_order(user_id, symbol, order_id)
+                if snapshot:
+                    # Broadcast public update
+                    public_snapshot = engine_trading.orderbooks[symbol].get_snapshot()
+                    await broadcast_update({
+                        "type": "SNAPSHOT",
+                        "data": public_snapshot
+                    })
+                    # Send personalized snapshot to the user who cancelled
+                    await websocket.send_text(json.dumps({
+                        "type": "SNAPSHOT",
+                        "data": snapshot
+                    }))
+                else:
+                    await websocket.send_text(json.dumps({"type": "ERROR", "message": "Order not found or already filled"}))
                 
     except WebSocketDisconnect:
         if username in active_connections:
@@ -179,6 +231,44 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 active_connections[username].remove(websocket)
             if not active_connections[username]:
                 del active_connections[username]
+
+@app.get("/history/{symbol}")
+def get_market_history(symbol: str, db: Session = Depends(get_db)):
+    # Fetch all trades for this symbol
+    trades = db.query(models.TradeRecord).filter(models.TradeRecord.symbol == symbol).order_by(models.TradeRecord.timestamp.asc()).all()
+    
+    # Bucket trades into 1-minute OHLC candles
+    candles = []
+    if not trades:
+        return []
+    
+    current_bucket = int(trades[0].timestamp // 60) * 60
+    current_ohlc = {
+        "time": current_bucket,
+        "open": trades[0].price,
+        "high": trades[0].price,
+        "low": trades[0].price,
+        "close": trades[0].price
+    }
+    
+    for t in trades:
+        bucket = int(t.timestamp // 60) * 60
+        if bucket == current_bucket:
+            current_ohlc["high"] = max(current_ohlc["high"], t.price)
+            current_ohlc["low"] = min(current_ohlc["low"], t.price)
+            current_ohlc["close"] = t.price
+        else:
+            candles.append(current_ohlc)
+            current_bucket = bucket
+            current_ohlc = {
+                "time": current_bucket,
+                "open": t.price,
+                "high": t.price,
+                "low": t.price,
+                "close": t.price
+            }
+    candles.append(current_ohlc)
+    return candles
 
 def floor_to_two(val):
     return float(f"{val:.2f}")

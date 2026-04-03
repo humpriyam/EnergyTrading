@@ -6,6 +6,7 @@
     <title>EnergyTrading | Marketplace</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -38,62 +39,118 @@
         </div>
     </div>
 
+    <!-- Alert Box -->
+    <div id="alert" class="alert-box" style="display: none;"></div>
+
     <div class="dashboard-grid">
-        <!-- Order Book Section -->
-        <div class="section-card glass">
+        <!-- Left Sidebar: Order Book -->
+        <div class="sidebar glass">
             <h3>Order Book <span style="font-size: 0.8rem; color: var(--text-muted); float: right;">kWh / INR</span></h3>
             <div id="orderBook">
                 <table class="book-table">
                     <thead>
                         <tr>
                             <th>Price (INR)</th>
-                            <th style="text-align: right;">Amount (kWh)</th>
+                            <th style="text-align: right;">Qty</th>
                             <th style="text-align: right;">Total</th>
                         </tr>
                     </thead>
                     <tbody id="askList"></tbody>
                     <tbody>
-                        <tr><td colspan="3" style="text-align: center; padding: 15px; font-weight: bold; font-size: 1.2rem;" id="marketPrice">0.00</td></tr>
+                        <tr><td colspan="3" style="text-align: center; padding: 15px; font-weight: bold; font-size: 1.2rem; color: var(--primary);" id="marketPrice">0.00</td></tr>
                     </tbody>
                     <tbody id="bidList"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Trade Interface Section -->
-        <div class="section-card glass">
-            <h3>Place Order</h3>
-            <div class="side-toggle">
-                <button id="buyBtn" class="side-btn active buy" onclick="setSide('BID')">BUY Energy</button>
-                <button id="sellBtn" class="side-btn sell" onclick="setSide('ASK')">SELL Energy</button>
+        <!-- Center Column -->
+        <div class="center-column">
+            <!-- Chart Section -->
+            <div class="section-card glass chart-card">
+                <h3>Market Analysis <span id="lastUpdated" style="font-size: 0.7rem; color: var(--text-muted); margin-left:10px;">LIVE</span></h3>
+                <div id="chartContainer"></div>
             </div>
-            
-            <div class="order-form">
-                <div class="input-group">
-                    <label>Price (INR)</label>
-                    <input type="number" id="orderPrice" step="0.01" placeholder="0.00">
+
+            <!-- Place Order Section -->
+            <div class="section-card glass">
+                <h3>Place Order</h3>
+                <div class="side-toggle">
+                    <button id="buyBtn" class="side-btn active buy" onclick="setSide('BID')">BUY Energy</button>
+                    <button id="sellBtn" class="side-btn sell" onclick="setSide('ASK')">SELL Energy</button>
                 </div>
-                <div class="input-group">
-                    <label>Amount (kWh)</label>
-                    <input type="number" id="orderQty" step="0.01" placeholder="0.00">
+                
+                <div class="order-form">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Price (INR)</label>
+                            <input type="number" id="orderPrice" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="input-group">
+                            <label>Amount (kWh)</label>
+                            <input type="number" id="orderQty" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Energy Source</label>
+                            <select id="energySource" class="glass-select">
+                                <option value="Grid">⚡ Main Grid</option>
+                                <option value="Solar">☀️ Solar Panel</option>
+                                <option value="Wind">🌬️ Wind Turbine</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Delivery Slot</label>
+                            <select id="deliverySlot" class="glass-select">
+                                <option value="Next Hour">Next Hour</option>
+                                <option value="T+2 Hours">T+2 Hours</option>
+                                <option value="T+6 Hours">T+6 Hours</option>
+                                <option value="Tomorrow">Tomorrow</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin: 15px 0; font-size: 0.9rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+                        <span>Market: <span id="currentSymbol" style="color: white; font-weight: bold;">kWh_INR</span></span>
+                        <span>Total: <span id="totalCost" style="color: var(--primary); font-weight: bold;">0.00</span> INR</span>
+                    </div>
+                    <button class="login-btn" id="placeOrderBtn" onclick="placeOrder()">EXECUTE EXCHANGE</button>
                 </div>
-                <div style="margin: 20px 0; font-size: 0.9rem; color: var(--text-muted);">
-                    Total: <span id="totalCost" style="color: white; font-weight: bold;">0.00</span> INR
+            </div>
+
+            <!-- My Open Orders Section -->
+            <div class="section-card glass">
+                <h3>My Open Orders</h3>
+                <div id="myOrdersContainer">
+                    <table class="book-table">
+                        <thead>
+                            <tr>
+                                <th>Side</th>
+                                <th>Price</th>
+                                <th>Qty</th>
+                                <th>Source</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="myOrdersList"></tbody>
+                    </table>
+                    <div id="noOrdersMsg" style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem;">
+                        No pending orders
+                    </div>
                 </div>
-                <button class="login-btn" id="placeOrderBtn" onclick="placeOrder()">Execute Order</button>
             </div>
         </div>
 
-        <!-- Recent Trades Section -->
-        <div class="section-card glass">
-            <h3>Recent Trades</h3>
-            <div id="tradeList" style="overflow-y: auto; max-height: calc(100% - 60px);">
+        <!-- Right Sidebar: Recent Trades -->
+        <div class="sidebar glass">
+            <h3>Grid Activity</h3>
+            <div id="tradeList" style="padding-top: 10px;">
                 <!-- Trades will be appended here -->
             </div>
         </div>
     </div>
-
-    <div id="alert"></div>
 
     <script src="/static/js/app.js"></script>
 </body>
