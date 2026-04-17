@@ -4,82 +4,266 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnergyTrading | Marketplace</title>
+    <meta name="description" content="Live peer-to-peer energy exchange platform — trade kWh in real time.">
     <link rel="stylesheet" href="/static/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
+    <!-- NAVBAR -->
     <nav class="navbar">
-        <div class="logo">EnergyTrading</div>
+        <div class="logo">⚡ EnergyTrading</div>
         <div class="nav-right">
             <div class="balance-card">
-                <span class="label">Balance</span>
+                <span class="label">BALANCE</span>
                 <span id="userBalance" class="value">0.00</span>
                 <span class="currency">INR</span>
-                <button class="add-funds-btn" onclick="showAddFunds()">+</button>
+                <button class="add-funds-btn" id="addFundsBtn" onclick="showAddFunds()" title="Add Funds">+</button>
             </div>
-            <div class="user-info" id="userInfo">Not Logged In</div>
+            <!-- Username — click to open My Account -->
+            <div class="user-info" id="userInfo" onclick="showMyAccount()" title="My Account">Not Logged In</div>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </nav>
 
-    <!-- Add Funds Modal -->
+    <!-- Alert Box -->
+    <div id="alert" class="alert-box" style="display: none;"></div>
+
+    <!-- ===================== ADD FUNDS MODAL ===================== -->
     <div id="fundsModal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass">
-            <h3>Add Funds (Demo)</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Enter the amount of INR you want to add to your account.</p>
+            <div class="modal-header">
+                <h3>Add Funds <span class="modal-tag">Demo</span></h3>
+                <button class="modal-close" onclick="hideAddFunds()">✕</button>
+            </div>
+            <p class="modal-subtitle">Enter the amount of INR you want to add to your trading account.</p>
             <div class="input-group">
                 <label>Amount (INR)</label>
                 <input type="number" id="fundsAmount" placeholder="1000.00" step="100">
             </div>
             <div class="modal-actions">
-                <button class="side-btn" onclick="hideAddFunds()">Cancel</button>
-                <button class="login-btn" onclick="addFunds()" style="margin-top: 0; width: auto; padding: 10px 30px;">Add Money</button>
+                <button class="btn-ghost" onclick="hideAddFunds()">Cancel</button>
+                <button class="btn-primary" onclick="addFunds()">Add Money</button>
             </div>
         </div>
     </div>
 
-    <!-- Alert Box -->
-    <div id="alert" class="alert-box" style="display: none;"></div>
+    <!-- ===================== MY ACCOUNT MODAL ===================== -->
+    <div id="accountModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass account-modal">
+            <div class="modal-header">
+                <h3>👤 My Account</h3>
+                <button class="modal-close" onclick="hideMyAccount()">✕</button>
+            </div>
 
+            <!-- Account Tabs -->
+            <div class="account-tabs">
+                <button class="acc-tab active" id="tabProfile" onclick="switchAccountTab('profile')">Profile</button>
+                <button class="acc-tab" id="tabSecurity" onclick="switchAccountTab('security')">Security</button>
+                <button class="acc-tab danger-tab" id="tabDanger" onclick="switchAccountTab('danger')">⚠ Danger</button>
+            </div>
+
+            <!-- PROFILE TAB -->
+            <div id="accountTabProfile" class="account-tab-content">
+                <div class="account-avatar">
+                    <div class="avatar-circle" id="avatarInitial">?</div>
+                    <div class="avatar-info">
+                        <div class="avatar-name" id="accUsername">—</div>
+                        <div class="avatar-badge">🟢 Active Trader</div>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Username</span>
+                        <span class="info-value" id="accUsernameDisplay">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Account Balance</span>
+                        <span class="info-value green" id="accBalance">0.00 INR</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Account ID</span>
+                        <span class="info-value" id="accId">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Market</span>
+                        <span class="info-value">kWh / INR</span>
+                    </div>
+                </div>
+
+                <div class="account-actions-grid five-col">
+                    <button class="acc-action-btn" onclick="hideMyAccount(); showAddFunds()">
+                        <span class="acc-icon">💰</span>
+                        <span>Add Funds</span>
+                    </button>
+                    <button class="acc-action-btn" onclick="hideMyAccount(); showWithdraw()">
+                        <span class="acc-icon">🏦</span>
+                        <span>Withdraw</span>
+                    </button>
+                    <button class="acc-action-btn" onclick="switchAccountTab('security')">
+                        <span class="acc-icon">🔐</span>
+                        <span>Change Password</span>
+                    </button>
+                    <button class="acc-action-btn danger" onclick="switchAccountTab('danger')">
+                        <span class="acc-icon">🗑️</span>
+                        <span>Delete Account</span>
+                    </button>
+                    <button class="acc-action-btn danger" onclick="hideMyAccount(); logout()">
+                        <span class="acc-icon">🚪</span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECURITY TAB -->
+            <div id="accountTabSecurity" class="account-tab-content" style="display:none;">
+                <h4 style="margin-bottom:18px; color: var(--muted); font-weight:500;">Change Password</h4>
+                <div class="input-group">
+                    <label>Current Password</label>
+                    <input type="password" id="oldPassword" placeholder="Enter current password">
+                </div>
+                <div class="input-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password (min 6 chars)">
+                </div>
+                <div class="input-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Repeat new password">
+                </div>
+                <div class="modal-actions" style="margin-top:10px;">
+                    <button class="btn-ghost" onclick="switchAccountTab('profile')">Back</button>
+                    <button class="btn-primary" onclick="changePassword()">Update Password</button>
+                </div>
+            </div>
+
+            <!-- DANGER TAB -->
+            <div id="accountTabDanger" class="account-tab-content" style="display:none;">
+                <div class="danger-zone-box">
+                    <div class="danger-zone-icon">⚠️</div>
+                    <h4 class="danger-zone-title">Delete Account</h4>
+                    <p class="danger-zone-desc">
+                        This action is <strong>permanent and irreversible</strong>. All your data will be erased.
+                        Your account balance must be <strong>0.00 INR</strong> before you can delete.
+                    </p>
+                    <div class="danger-balance-check">
+                        <span class="danger-label">Current Balance:</span>
+                        <span class="danger-balance" id="dangerBalance">0.00 INR</span>
+                    </div>
+                </div>
+                <div class="input-group" style="margin-top:18px;">
+                    <label>Confirm Password to Delete</label>
+                    <input type="password" id="deletePassword" placeholder="Enter your password">
+                </div>
+                <div class="input-group">
+                    <label>Type <strong style="color:var(--ask);">DELETE</strong> to confirm</label>
+                    <input type="text" id="deleteConfirmText" placeholder="Type DELETE here">
+                </div>
+                <div class="modal-actions" style="margin-top:10px;">
+                    <button class="btn-ghost" onclick="switchAccountTab('profile')">Cancel</button>
+                    <button class="btn-danger" onclick="deleteAccount()">🗑️ Delete My Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== WITHDRAW MODAL ===================== -->
+    <div id="withdrawModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h3>🏦 Withdraw Funds</h3>
+                <button class="modal-close" onclick="hideWithdraw()">✕</button>
+            </div>
+            <p class="modal-subtitle">Enter the amount to withdraw from your trading account. Your password is required for security.</p>
+            <div class="withdraw-balance-display">
+                <span class="wbal-label">Available Balance</span>
+                <span class="wbal-value" id="withdrawAvailBal">0.00 INR</span>
+            </div>
+            <!-- Quick percentage buttons -->
+            <div class="withdraw-pct-row">
+                <button class="pct-btn" onclick="setWithdrawPct(0.25)">25%</button>
+                <button class="pct-btn" onclick="setWithdrawPct(0.50)">50%</button>
+                <button class="pct-btn" onclick="setWithdrawPct(0.75)">75%</button>
+                <button class="pct-btn pct-all" onclick="setWithdrawPct(1.00)">Withdraw All</button>
+            </div>
+            <div class="input-group">
+                <label>Withdraw Amount (INR)</label>
+                <input type="number" id="withdrawAmount" placeholder="0.00" step="0.01" oninput="updateWithdrawPreview()">
+            </div>
+            <div class="withdraw-preview" id="withdrawPreview" style="display:none;">
+                <span>After withdrawal: <strong id="withdrawAfterBal" class="green">0.00 INR</strong></span>
+            </div>
+            <div class="input-group">
+                <label>Confirm Password</label>
+                <input type="password" id="withdrawPassword" placeholder="Enter your password">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-ghost" onclick="hideWithdraw()">Cancel</button>
+                <button class="btn-danger" onclick="withdraw()">Withdraw Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== MAIN DASHBOARD 3-COLUMN GRID ===================== -->
     <div class="dashboard-grid">
-        <!-- Left Sidebar: Order Book -->
-        <div class="sidebar glass">
-            <h3>Order Book <span style="font-size: 0.8rem; color: var(--text-muted); float: right;">kWh / INR</span></h3>
-            <div id="orderBook">
-                <table class="book-table">
-                    <thead>
-                        <tr>
-                            <th>Price (INR)</th>
-                            <th style="text-align: right;">Qty</th>
-                            <th style="text-align: right;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody id="askList"></tbody>
-                    <tbody>
-                        <tr><td colspan="3" style="text-align: center; padding: 15px; font-weight: bold; font-size: 1.2rem; color: var(--primary);" id="marketPrice">0.00</td></tr>
-                    </tbody>
-                    <tbody id="bidList"></tbody>
-                </table>
+
+        <!-- ====== LEFT PANEL: Order Book + Grid Activity ====== -->
+        <div class="left-panel">
+            <!-- Order Book -->
+            <div class="panel-card glass orderbook-card">
+                <h3 class="panel-title">
+                    Order Book
+                    <span class="panel-subtitle">kWh / INR</span>
+                </h3>
+                <div id="orderBook" class="scrollable">
+                    <table class="book-table">
+                        <thead>
+                            <tr>
+                                <th>Price (INR)</th>
+                                <th style="text-align: right;">Qty</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="askList"></tbody>
+                        <tbody>
+                            <tr><td colspan="3" class="market-price-row" id="marketPrice">0.00</td></tr>
+                        </tbody>
+                        <tbody id="bidList"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Grid Activity -->
+            <div class="panel-card glass gridactivity-card">
+                <h3 class="panel-title">
+                    Grid Activity
+                    <span class="live-dot">● LIVE</span>
+                </h3>
+                <div id="tradeList" class="scrollable trade-feed"></div>
             </div>
         </div>
 
-        <!-- Center Column -->
-        <div class="center-column">
-            <!-- Chart Section -->
-            <div class="section-card glass chart-card">
-                <h3>Market Analysis <span id="lastUpdated" style="font-size: 0.7rem; color: var(--text-muted); margin-left:10px;">LIVE</span></h3>
+        <!-- ====== CENTER PANEL: Candlestick Chart ====== -->
+        <div class="center-panel">
+            <div class="panel-card glass chart-card">
+                <h3 class="panel-title">
+                    Market Analysis
+                    <span id="lastUpdated" class="live-badge">LIVE</span>
+                </h3>
                 <div id="chartContainer"></div>
             </div>
+        </div>
 
-            <!-- Place Order Section -->
-            <div class="section-card glass">
-                <h3>Place Order</h3>
+        <!-- ====== RIGHT PANEL: Place Order + Open Orders ====== -->
+        <div class="right-panel">
+            <!-- Place Order -->
+            <div class="panel-card glass order-form-card">
+                <h3 class="panel-title">Place Order</h3>
                 <div class="side-toggle">
                     <button id="buyBtn" class="side-btn active buy" onclick="setSide('BID')">BUY Energy</button>
                     <button id="sellBtn" class="side-btn sell" onclick="setSide('ASK')">SELL Energy</button>
                 </div>
-                
+
                 <div class="order-form">
                     <div class="input-row">
                         <div class="input-group">
@@ -92,38 +276,37 @@
                         </div>
                     </div>
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>Energy Source</label>
-                            <select id="energySource" class="glass-select">
-                                <option value="Grid">⚡ Main Grid</option>
-                                <option value="Solar">☀️ Solar Panel</option>
-                                <option value="Wind">🌬️ Wind Turbine</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Delivery Slot</label>
-                            <select id="deliverySlot" class="glass-select">
-                                <option value="Next Hour">Next Hour</option>
-                                <option value="T+2 Hours">T+2 Hours</option>
-                                <option value="T+6 Hours">T+6 Hours</option>
-                                <option value="Tomorrow">Tomorrow</option>
-                            </select>
-                        </div>
+                    <div class="input-group">
+                        <label>Energy Source</label>
+                        <select id="energySource" class="glass-select">
+                            <option value="Grid">⚡ Main Grid</option>
+                            <option value="Solar">☀️ Solar Panel</option>
+                            <option value="Wind">🌬️ Wind Turbine</option>
+                        </select>
                     </div>
 
-                    <div style="margin: 15px 0; font-size: 0.9rem; color: var(--text-muted); display: flex; justify-content: space-between;">
-                        <span>Market: <span id="currentSymbol" style="color: white; font-weight: bold;">kWh_INR</span></span>
-                        <span>Total: <span id="totalCost" style="color: var(--primary); font-weight: bold;">0.00</span> INR</span>
+                    <div class="input-group">
+                        <label>Delivery Slot</label>
+                        <select id="deliverySlot" class="glass-select">
+                            <option value="Next Hour">Next Hour</option>
+                            <option value="T+2 Hours">T+2 Hours</option>
+                            <option value="T+6 Hours">T+6 Hours</option>
+                            <option value="Tomorrow">Tomorrow</option>
+                        </select>
                     </div>
-                    <button class="login-btn" id="placeOrderBtn" onclick="placeOrder()">EXECUTE EXCHANGE</button>
+
+                    <div class="order-summary">
+                        <span>Market: <strong id="currentSymbol">kWh_INR</strong></span>
+                        <span>Total: <strong id="totalCost" class="green">0.00</strong> INR</span>
+                    </div>
+                    <button class="btn-execute" id="placeOrderBtn" onclick="placeOrder()">EXECUTE EXCHANGE</button>
                 </div>
             </div>
 
-            <!-- My Open Orders Section -->
-            <div class="section-card glass">
-                <h3>My Open Orders</h3>
-                <div id="myOrdersContainer">
+            <!-- My Open Orders -->
+            <div class="panel-card glass open-orders-card">
+                <h3 class="panel-title">My Open Orders</h3>
+                <div id="myOrdersContainer" class="scrollable">
                     <table class="book-table">
                         <thead>
                             <tr>
@@ -136,21 +319,12 @@
                         </thead>
                         <tbody id="myOrdersList"></tbody>
                     </table>
-                    <div id="noOrdersMsg" style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem;">
-                        No pending orders
-                    </div>
+                    <div id="noOrdersMsg" class="empty-msg">No pending orders</div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Sidebar: Recent Trades -->
-        <div class="sidebar glass">
-            <h3>Grid Activity</h3>
-            <div id="tradeList" style="padding-top: 10px;">
-                <!-- Trades will be appended here -->
-            </div>
-        </div>
-    </div>
+    </div><!-- end .dashboard-grid -->
 
     <script src="/static/js/app.js"></script>
 </body>

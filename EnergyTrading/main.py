@@ -79,6 +79,54 @@ def get_user(username: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
+@app.post("/change-password")
+def change_password(req: schemas.ChangePassword, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.username == req.username).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not auth.verify_password(req.old_password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    db_user.hashed_password = auth.get_password_hash(req.new_password)
+    db.commit()
+    return {"status": "success", "message": "Password updated successfully"}
+
+@app.post("/withdraw")
+def withdraw(req: schemas.WithdrawRequest, db: Session = Depends(get_db)):
+    """Withdraw funds — validates password and sufficient balance."""
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Withdrawal amount must be greater than zero")
+    db_user = db.query(models.User).filter(models.User.username == req.username).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not auth.verify_password(req.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+    if db_user.balance < req.amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient balance. Available: {db_user.balance:.2f} INR"
+        )
+    db_user.balance -= req.amount
+    db.commit()
+    db.refresh(db_user)
+    return {"status": "success", "new_balance": db_user.balance, "withdrawn": req.amount}
+
+@app.delete("/delete-account")
+def delete_account(req: schemas.DeleteAccount, db: Session = Depends(get_db)):
+    """Permanently delete a user account — balance must be 0."""
+    db_user = db.query(models.User).filter(models.User.username == req.username).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not auth.verify_password(req.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+    if db_user.balance > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Account balance must be 0.00 INR before deletion. Current balance: {db_user.balance:.2f} INR"
+        )
+    db.delete(db_user)
+    db.commit()
+    return {"status": "success", "message": "Account permanently deleted"}
+
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await websocket.accept()

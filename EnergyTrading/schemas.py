@@ -20,3 +20,17 @@ class UserResponse(UserBase):
 class BalanceUpdate(BaseModel):
     username: str
     amount: float
+
+class ChangePassword(BaseModel):
+    username: str
+    old_password: str
+    new_password: str
+
+class WithdrawRequest(BaseModel):
+    username: str
+    amount: float
+    password: str   # confirm identity before withdrawing
+
+class DeleteAccount(BaseModel):
+    username: str
+    password: str   # confirm identity before deletion
